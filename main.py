@@ -8,7 +8,7 @@ from requests_toolbelt.multipart.encoder import MultipartEncoder, MultipartEncod
 import plistlib
 
 # create env.py and add these variable
-from env import android_id, api_token, git_dir, ios_id
+from env import android_id, api_token, git_dir, ios_id, ding_web_hook
 
 android_apk_path = './build/app/outputs/apk/release/app-release.apk'
 android_apk_info_path = './build/app/outputs/apk/release/output.json'
@@ -100,7 +100,7 @@ def upload_android():
             'file': (os.path.basename(android_apk_icon_path), open(android_apk_icon_path, 'rb'), 'multipart/form-data'),
         }
     )
-    requests.post(url=upload_url, data=form_encoder, headers={'Content-Type': form_encoder.content_type})
+    requests.post(url=upload_url, data=form_encoder, headers={'Content-Type': form_encoder.content_type}, timeout=60)
 
     # apk 版本号
     apk_version_json = json.load(open(android_apk_info_path, 'rb'))
@@ -132,12 +132,29 @@ def upload_android():
     )
     monitor = MultipartEncoderMonitor(form_encoder, upload_progress_callback)
 
-    upload_result = requests.post(url=upload_url, data=monitor, headers={'Content-Type': monitor.content_type})
+    upload_result = requests.post(url=upload_url, data=monitor, headers={'Content-Type': monitor.content_type},
+                                  timeout=60)
 
     print(upload_result.json())
 
     # 返回上传结果
     return upload_result.json()["is_completed"]
+
+
+def ding_android():
+    print("\n\n钉钉通知\n\n")
+
+    # 获取Android应用信息
+    base_info = requests.get('http://api.bq04.com/apps/' + android_id + '?api_token=' + api_token)
+    name = base_info.json()['name']
+    short = base_info.json()['short']
+    download_domain = base_info.json()['download_domain']
+
+    content = name + " 安卓 测试包更新了! \n下载地址: " + 'http://' + download_domain + '/' + short
+
+    request_data = {'msgtype': 'text', 'text': {'content': content}}
+    result = requests.post(url=ding_web_hook, json=request_data, timeout=60)
+    print(result)
 
 
 def build_ios():
@@ -211,7 +228,7 @@ def upload_ios():
     # 获取上传凭证
     heads = {'Content-Type': 'application/json'}
     request_data = {'type': 'ios', 'bundle_id': bundle_id, 'api_token': api_token}
-    token_response = requests.post(url='http://api.bq04.com/apps', headers=heads, json=request_data)
+    token_response = requests.post(url='http://api.bq04.com/apps', headers=heads, json=request_data, timeout=60)
 
     binary = token_response.json()['cert']['icon']
     key = binary['key']
@@ -234,7 +251,7 @@ def upload_ios():
             'file': (icon_name, open(icon_dir + '/' + icon_name, 'rb'), 'multipart/form-data'),
         }
     )
-    requests.post(url=upload_url, data=form_encoder, headers={'Content-Type': form_encoder.content_type})
+    requests.post(url=upload_url, data=form_encoder, headers={'Content-Type': form_encoder.content_type}, timeout=60)
 
     # ipa 版本号
     with open(xcarchive_path + "/Info.plist", 'rb') as fp:
@@ -284,6 +301,21 @@ def upload_ios():
     return upload_result.json()["is_completed"]
 
 
+def ding_ios():
+    print("\n\n钉钉通知\n\n")
+
+    # 获取iOS应用信息
+    base_info = requests.get('http://api.bq04.com/apps/' + ios_id + '?api_token=' + api_token)
+    name = base_info.json()['name']
+    short = base_info.json()['short']
+    download_domain = base_info.json()['download_domain']
+
+    content = name + " iOS 测试包更新了! \n下载地址: " + 'http://' + download_domain + '/' + short
+
+    request_data = {'msgtype': 'text', 'text': {'content': content}}
+    requests.post(url=ding_web_hook, json=request_data,  timeout=60)
+
+
 if __name__ == '__main__':
     os.chdir(git_dir)
 
@@ -296,6 +328,8 @@ if __name__ == '__main__':
     success = upload_android()
     if not success:
         exit(-1, 'Android Apk 上传失败')
+    else:
+        ding_android()
 
     success = build_ios()
     if not success:
@@ -304,6 +338,8 @@ if __name__ == '__main__':
     success = upload_ios()
     if not success:
         exit(-1, 'iOS ipa 上传失败')
+    else:
+        ding_ios()
 
     print('上传完成')
 

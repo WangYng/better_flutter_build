@@ -15,6 +15,9 @@ ios_id = ''
 
 # 本地 flutter 项目路径
 git_dir = ''
+
+# 钉钉机器人webhook地址
+ding_web_hook = ''
 ```
 
  2. 添加以下依赖
