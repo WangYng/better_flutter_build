@@ -6,7 +6,7 @@
 
 ### 用法: 
  1. 创建 env.py, 填入必须的参数
-```python
+```python3
 # fir.im 信息
 # 官方文档 https://www.betaqr.com/docs/publish
 api_token = ''
@@ -17,11 +17,14 @@ ios_id = ''
 git_dir = ''
 ```
 
- 2. 使用PyCharm打开此项目添加依赖
-```
+ 2. 添加以下依赖
+```python3
 # GitPython
 # requests
 # requests-toolbelt
 ```
     
- 3. 几分钟后即上传成功
+ 3. 运行脚本, 几分钟后即上传成功
+```python3
+python3 main.py
+```
