@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import time
 
 import git
@@ -8,7 +9,7 @@ from requests_toolbelt.multipart.encoder import MultipartEncoder, MultipartEncod
 import plistlib
 
 # create env.py and add these variable
-from env import android_id, api_token, git_dir, ios_id, ding_web_hook
+from env import android_id, api_token, git_dir, ios_id, ding_web_hook, env_path
 
 android_apk_path = './build/app/outputs/apk/release/app-release.apk'
 android_apk_info_path = './build/app/outputs/apk/release/output.json'
@@ -263,7 +264,10 @@ def upload_ios():
     git_head = git.Repo(git_dir).head
     git_ref = git_head.ref
     git_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(git_head.commit.committed_date))
-    change_log = "代码分支: %s \n更新时间: %s" % (git_ref, git_time)
+    if is_release():
+        change_log = "代码分支: %s \n更新时间: %s \n正式环境: %s" % (git_ref, git_time, "是" if is_release() else "否")
+    else:
+        change_log = "代码分支: %s \n更新时间: %s " % (git_ref, git_time)
 
     # 应用名称
     ipa_name = ''
@@ -313,7 +317,19 @@ def ding_ios():
     content = name + " iOS 测试包更新了! \n下载地址: " + 'http://' + download_domain + '/' + short
 
     request_data = {'msgtype': 'text', 'text': {'content': content}}
-    requests.post(url=ding_web_hook, json=request_data,  timeout=60)
+    requests.post(url=ding_web_hook, json=request_data, timeout=60)
+
+
+def is_release():
+    if os.path.exists(env_path):
+        with open(env_path) as fin:
+            for line in fin.readlines():
+                result = re.match(r'.*release[^a-z]*=[^a-z]*([a-z]*).*', line, re.I)
+
+                if result and 'true' == result.group(1):
+                    return True
+                if result and 'true' == result.group(1):
+                    return False
 
 
 if __name__ == '__main__':
@@ -342,4 +358,3 @@ if __name__ == '__main__':
         ding_ios()
 
     print('上传完成')
-
