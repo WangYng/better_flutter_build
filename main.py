@@ -13,7 +13,9 @@ from env import android_id, api_token, git_dir, ios_id, ding_web_hook, env_path
 
 android_apk_path = './build/app/outputs/apk/release/app-release.apk'
 android_apk_info_path = './build/app/outputs/apk/release/output.json'
+android_apk_mate_path = './build/app/outputs/apk/release/output-metadata.json'
 android_apk_icon_path = './android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png'
+android_apk_icon_path2 = './android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png'
 
 ios_output_dir = 'outputs'
 xcarchive_path = ''
@@ -67,7 +69,7 @@ def build_android():
     os.chdir('../')
 
     # 判断编译文件是否存在
-    return os.path.exists(android_apk_path) & os.path.exists(android_apk_info_path)
+    return os.path.exists(android_apk_path)
 
 
 def upload_progress_callback(monitor: MultipartEncoderMonitor):
@@ -94,19 +96,38 @@ def upload_android():
     upload_url = binary['upload_url']
 
     # 上传图标至服务器
-    form_encoder = MultipartEncoder(
-        fields={
-            'key': key,
-            'token': token,
-            'file': (os.path.basename(android_apk_icon_path), open(android_apk_icon_path, 'rb'), 'multipart/form-data'),
-        }
-    )
-    requests.post(url=upload_url, data=form_encoder, headers={'Content-Type': form_encoder.content_type}, timeout=60)
+    if os.path.exists(android_apk_icon_path):
+        form_encoder = MultipartEncoder(
+            fields={
+                'key': key,
+                'token': token,
+                'file': (
+                os.path.basename(android_apk_icon_path), open(android_apk_icon_path, 'rb'), 'multipart/form-data'),
+            }
+        )
+        requests.post(url=upload_url, data=form_encoder, headers={'Content-Type': form_encoder.content_type},
+                      timeout=60)
+    elif os.path.exists(android_apk_icon_path2):
+        form_encoder = MultipartEncoder(
+            fields={
+                'key': key,
+                'token': token,
+                'file': (
+                os.path.basename(android_apk_icon_path2), open(android_apk_icon_path2, 'rb'), 'multipart/form-data'),
+            }
+        )
+        requests.post(url=upload_url, data=form_encoder, headers={'Content-Type': form_encoder.content_type},
+                      timeout=60)
 
     # apk 版本号
-    apk_version_json = json.load(open(android_apk_info_path, 'rb'))
-    version_name = apk_version_json[0]['apkData']['versionName']
-    version_code = apk_version_json[0]['apkData']['versionCode']
+    if os.path.exists(android_apk_info_path):
+        apk_version_json = json.load(open(android_apk_info_path, 'rb'))
+        version_name = apk_version_json[0]['apkData']['versionName']
+        version_code = apk_version_json[0]['apkData']['versionCode']
+    elif os.path.exists(android_apk_mate_path):
+        apk_version_json = json.load(open(android_apk_mate_path, 'rb'))
+        version_name = apk_version_json['elements'][0]['versionName']
+        version_code = apk_version_json['elements'][0]['versionCode']
 
     # change log
     git_head = git.Repo(git_dir).head
@@ -264,10 +285,7 @@ def upload_ios():
     git_head = git.Repo(git_dir).head
     git_ref = git_head.ref
     git_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(git_head.commit.committed_date))
-    if is_release():
-        change_log = "代码分支: %s \n更新时间: %s \n正式环境: %s" % (git_ref, git_time, "是" if is_release() else "否")
-    else:
-        change_log = "代码分支: %s \n更新时间: %s " % (git_ref, git_time)
+    change_log = "代码分支: %s \n更新时间: %s \n正式环境: %s" % (git_ref, git_time, "是" if is_release() else "否")
 
     # 应用名称
     ipa_name = ''
