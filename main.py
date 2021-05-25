@@ -2,6 +2,7 @@ import json
 import os
 import re
 import time
+import shutil
 
 import git
 import requests
@@ -18,8 +19,8 @@ android_apk_icon_path = './android/app/src/main/res/mipmap-xxhdpi/ic_launcher.pn
 android_apk_icon_path2 = './android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png'
 
 ios_output_dir = 'outputs'
-xcarchive_path = ''
-ipa_dir = ''
+xcarchive_path = "./%s/Runner.xcarchive" % ios_output_dir
+ipa_dir = "./%s/Runner" % ios_output_dir
 
 ios_export_options = '''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -133,7 +134,7 @@ def upload_android():
     git_head = git.Repo(git_dir).head
     git_ref = git_head.ref
     git_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(git_head.commit.committed_date))
-    change_log = "代码分支: %s \n更新时间: %s" % (git_ref, git_time)
+    change_log = "代码分支: %s \n更新时间: %s \n正式环境: %s" % (git_ref, git_time, "是" if is_release() else "否")
 
     binary = token_response.json()['cert']['binary']
     key = binary['key']
@@ -199,13 +200,10 @@ def build_ios():
         build_plist.write(ios_export_options)
         build_plist.close()
 
-    current_time = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
-
-    global xcarchive_path
-    global ipa_dir
-
-    xcarchive_path = "./%s/Runner_%s.xcarchive" % (ios_output_dir, current_time)
-    ipa_dir = "./%s/Runner_%s" % (ios_output_dir, current_time)
+    if os.path.exists(xcarchive_path):
+        shutil.rmtree(xcarchive_path)
+    if os.path.exists(ipa_dir):
+        shutil.rmtree(ipa_dir)
 
     os.system("xcodebuild archive "
               "-workspace Runner.xcworkspace "
