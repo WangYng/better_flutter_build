@@ -186,6 +186,7 @@ def build_ios():
 
     os.chdir('./ios')
 
+    os.system('xcodebuild clean')
     os.system('pod update')
     os.system('pod install')
 
