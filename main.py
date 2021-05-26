@@ -103,7 +103,7 @@ def upload_android():
                 'key': key,
                 'token': token,
                 'file': (
-                os.path.basename(android_apk_icon_path), open(android_apk_icon_path, 'rb'), 'multipart/form-data'),
+                    os.path.basename(android_apk_icon_path), open(android_apk_icon_path, 'rb'), 'multipart/form-data'),
             }
         )
         requests.post(url=upload_url, data=form_encoder, headers={'Content-Type': form_encoder.content_type},
@@ -114,7 +114,8 @@ def upload_android():
                 'key': key,
                 'token': token,
                 'file': (
-                os.path.basename(android_apk_icon_path2), open(android_apk_icon_path2, 'rb'), 'multipart/form-data'),
+                    os.path.basename(android_apk_icon_path2), open(android_apk_icon_path2, 'rb'),
+                    'multipart/form-data'),
             }
         )
         requests.post(url=upload_url, data=form_encoder, headers={'Content-Type': form_encoder.content_type},
@@ -238,8 +239,6 @@ def build_ios():
 def upload_ios():
     print('\n\n上传ipa\n\n')
 
-    os.chdir('./ios')
-
     # 获取iOS应用信息
     base_info = requests.get('http://api.bq04.com/apps/' + ios_id + '?api_token=' + api_token)
     name = base_info.json()['name']
@@ -313,8 +312,6 @@ def upload_ios():
 
     upload_result = requests.post(url=upload_url, data=monitor, headers={'Content-Type': monitor.content_type})
 
-    os.chdir('../')
-
     print(upload_result.json())
 
     # 返回上传结果
@@ -357,7 +354,12 @@ if __name__ == '__main__':
     if not success:
         exit(-1, 'Android项目编译失败')
 
-    success = upload_android()
+    while True:
+        try:
+            success = upload_android()
+            break
+        except:
+            print('上传出错')
     if not success:
         exit(-1, 'Android Apk 上传失败')
     else:
@@ -367,7 +369,17 @@ if __name__ == '__main__':
     if not success:
         exit(-1, 'iOS项目编译失败')
 
-    success = upload_ios()
+    while True:
+        os.chdir('./ios')
+
+        try:
+            success = upload_ios()
+            break
+        except:
+            print('上传出错')
+        finally:
+            os.chdir('../')
+
     if not success:
         exit(-1, 'iOS ipa 上传失败')
     else:
