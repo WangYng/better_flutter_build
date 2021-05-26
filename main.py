@@ -360,6 +360,7 @@ if __name__ == '__main__':
             break
         except:
             print('上传出错')
+            time.sleep(1)
     if not success:
         exit(-1, 'Android Apk 上传失败')
     else:
@@ -377,6 +378,7 @@ if __name__ == '__main__':
             break
         except:
             print('上传出错')
+            time.sleep(1)
         finally:
             os.chdir('../')
 
