@@ -10,7 +10,7 @@ from requests_toolbelt.multipart.encoder import MultipartEncoder, MultipartEncod
 import plistlib
 
 # create env.py and add these variable
-from env import android_id, api_token, git_dir, ios_id, ding_web_hook, env_path
+from env import android_id, api_token, git_dir, ios_id, ding_web_hook, env_path, flutter
 
 android_apk_path = './build/app/outputs/apk/release/app-release.apk'
 android_apk_info_path = './build/app/outputs/apk/release/output.json'
@@ -43,15 +43,20 @@ ios_export_options = '''<?xml version="1.0" encoding="UTF-8"?>
 '''
 
 
-def clean_flutter():
+def config_http_proxy():
+    os.system('export http_proxy=http://127.0.0.1:1087')
+    os.system('export https_proxy=http://127.0.0.1:1087')
+
+
+def build_flutter():
     print('\n\n清空flutter项目\n\n')
 
-    os.system('flutter clean')
+    os.system(flutter + ' clean')
 
     print('\n\n更新flutter项目依赖\n\n')
 
     # 获取flutter项目依赖
-    os.system('flutter pub get')
+    os.system(flutter + ' pub get')
 
 
 def build_android():
@@ -187,7 +192,7 @@ def build_ios():
     os.chdir('./ios')
 
     os.system('xcodebuild clean')
-    os.system('pod update')
+    # os.system('pod update')
     os.system('pod install')
 
     # 创建目录
@@ -349,7 +354,9 @@ def is_release():
 if __name__ == '__main__':
     os.chdir(git_dir)
 
-    clean_flutter()
+    # config_http_proxy()
+
+    build_flutter()
 
     success = build_android()
     if not success:
