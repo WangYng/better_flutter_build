@@ -140,7 +140,7 @@ def upload_android():
     git_head = git.Repo(git_dir).head
     git_ref = git_head.ref
     git_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(git_head.commit.committed_date))
-    change_log = "代码分支: %s \n代码提交时间: %s \n正式环境: %s" % (git_ref, git_time, "是" if is_release() else "否")
+    change_log = "代码分支: %s \n代码提交时间: %s \n服务器环境: %s" % (git_ref, git_time, "正式环境" if is_release() else "测试环境")
 
     binary = token_response.json()['cert']['binary']
     key = binary['key']
@@ -289,7 +289,7 @@ def upload_ios():
     git_head = git.Repo(git_dir).head
     git_ref = git_head.ref
     git_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(git_head.commit.committed_date))
-    change_log = "代码分支: %s \n代码提交时间: %s \n正式环境: %s" % (git_ref, git_time, "是" if is_release() else "否")
+    change_log = "代码分支: %s \n代码提交时间: %s \n服务器环境: %s" % (git_ref, git_time, "正式环境" if is_release() else "测试环境")
 
     # 应用名称
     ipa_name = ''
@@ -357,7 +357,7 @@ def is_release():
 if __name__ == '__main__':
     os.chdir(git_dir)
 
-    # config_http_proxy()
+    config_http_proxy()
 
     build_flutter()
 
