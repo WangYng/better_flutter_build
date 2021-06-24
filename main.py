@@ -140,7 +140,7 @@ def upload_android():
     git_head = git.Repo(git_dir).head
     git_ref = git_head.ref
     git_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(git_head.commit.committed_date))
-    change_log = "代码分支: %s \n更新时间: %s \n正式环境: %s" % (git_ref, git_time, "是" if is_release() else "否")
+    change_log = "代码分支: %s \n代码提交时间: %s \n正式环境: %s" % (git_ref, git_time, "是" if is_release() else "否")
 
     binary = token_response.json()['cert']['binary']
     key = binary['key']
@@ -167,10 +167,10 @@ def upload_android():
     print(upload_result.json())
 
     # 返回上传结果
-    return upload_result.json()["is_completed"]
+    return {'change_log': change_log, 'release_id': upload_result.json()["release_id"]}
 
 
-def ding_android():
+def ding_android(result):
     print("\n\n钉钉通知\n\n")
 
     # 获取Android应用信息
@@ -179,11 +179,12 @@ def ding_android():
     short = base_info.json()['short']
     download_domain = base_info.json()['download_domain']
 
-    content = name + " 安卓 测试包更新了! \n下载地址: " + 'http://' + download_domain + '/' + short
+    content = name + " 安卓 测试包更新了! \n" + result[
+        'change_log'] + "\n下载地址: " + 'http://' + download_domain + '/' + short + '?release_id=' + result[
+                  'release_id']
 
     request_data = {'msgtype': 'text', 'text': {'content': content}}
     result = requests.post(url=ding_web_hook, json=request_data, timeout=60)
-    print(result)
 
 
 def build_ios():
@@ -288,7 +289,7 @@ def upload_ios():
     git_head = git.Repo(git_dir).head
     git_ref = git_head.ref
     git_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(git_head.commit.committed_date))
-    change_log = "代码分支: %s \n更新时间: %s \n正式环境: %s" % (git_ref, git_time, "是" if is_release() else "否")
+    change_log = "代码分支: %s \n代码提交时间: %s \n正式环境: %s" % (git_ref, git_time, "是" if is_release() else "否")
 
     # 应用名称
     ipa_name = ''
@@ -321,10 +322,10 @@ def upload_ios():
     print(upload_result.json())
 
     # 返回上传结果
-    return upload_result.json()["is_completed"]
+    return {'change_log': change_log, 'release_id': upload_result.json()["release_id"]}
 
 
-def ding_ios():
+def ding_ios(result):
     print("\n\n钉钉通知\n\n")
 
     # 获取iOS应用信息
@@ -333,7 +334,9 @@ def ding_ios():
     short = base_info.json()['short']
     download_domain = base_info.json()['download_domain']
 
-    content = name + " iOS 测试包更新了! \n下载地址: " + 'http://' + download_domain + '/' + short
+    content = name + " iOS 测试包更新了! \n" + result[
+        'change_log'] + "\n下载地址: " + 'http://' + download_domain + '/' + short + '?release_id=' + result[
+                  'release_id']
 
     request_data = {'msgtype': 'text', 'text': {'content': content}}
     requests.post(url=ding_web_hook, json=request_data, timeout=60)
@@ -364,15 +367,13 @@ if __name__ == '__main__':
 
     while True:
         try:
-            success = upload_android()
+            upload_result = upload_android()
             break
         except:
             print('上传出错')
             time.sleep(1)
-    if not success:
-        exit(-1, 'Android Apk 上传失败')
-    else:
-        ding_android()
+
+    ding_android(upload_result)
 
     success = build_ios()
     if not success:
@@ -382,7 +383,7 @@ if __name__ == '__main__':
         os.chdir('./ios')
 
         try:
-            success = upload_ios()
+            upload_result = upload_ios()
             break
         except:
             print('上传出错')
@@ -390,9 +391,6 @@ if __name__ == '__main__':
         finally:
             os.chdir('../')
 
-    if not success:
-        exit(-1, 'iOS ipa 上传失败')
-    else:
-        ding_ios()
+    ding_ios(upload_result)
 
     print('上传完成')
