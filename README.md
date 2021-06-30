@@ -16,18 +16,22 @@ ios_id = ''
 # 本地 flutter 项目路径
 git_dir = ''
 
+# 本地 flutter 命令地址
+flutter = ''
+
+# 配置文件地址, 获取含有 release 字段的值, 并输出到日志中
+env_path = ''
+
 # 钉钉机器人webhook地址
-ding_web_hook = ''
+ding_web_hook = 'https://oapi.dingtalk.com/robot/send?access_token=xxx'
 ```
 
- 2. 添加以下依赖
-```python3
-# GitPython
-# requests
-# requests-toolbelt
+ 2. 使用pip添加以下依赖
+```terminal
+pip3 install GitPython certifi chardet gitdb idna requests requests-toolbelt setuptools smmap urllib3
 ```
     
  3. 运行脚本, 几分钟后即上传成功
-```python3
+```terminal
 python3 main.py
 ```
