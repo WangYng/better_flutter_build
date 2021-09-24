@@ -214,6 +214,7 @@ def build_ios():
         shutil.rmtree(ipa_dir)
 
     os.system("xcodebuild archive "
+              "-allowProvisioningUpdates "
               "-workspace Runner.xcworkspace "
               "-scheme Runner "
               "-configuration Release "
@@ -229,6 +230,7 @@ def build_ios():
 
     os.system("xcodebuild "
               "-exportArchive "
+              "-allowProvisioningUpdates "
               "-archivePath %s "
               "-exportPath %s "
               "-exportOptionsPlist %s"
@@ -357,7 +359,7 @@ def is_release():
 if __name__ == '__main__':
     os.chdir(git_dir)
 
-    config_http_proxy()
+    # config_http_proxy()
 
     build_flutter()
 
