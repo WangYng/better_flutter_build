@@ -1,4 +1,5 @@
 import json
+import multiprocessing
 import os
 import re
 import time
@@ -49,6 +50,8 @@ def config_http_proxy():
 
 
 def build_flutter():
+    os.chdir(git_dir)
+
     print('\n\n清空flutter项目\n\n')
 
     os.system(flutter + ' clean')
@@ -60,6 +63,8 @@ def build_flutter():
 
 
 def build_android():
+    os.chdir(git_dir)
+
     print('\n\n清空Android项目\n\n')
 
     os.chdir('./android')
@@ -140,7 +145,7 @@ def upload_android():
     git_head = git.Repo(git_dir).head
     git_ref = git_head.ref
     git_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(git_head.commit.committed_date))
-    change_log = "代码分支: %s \n代码提交时间: %s \n服务器环境: %s" % (git_ref, git_time, "正式环境" if is_release() else "测试环境")
+    change_log = "代码分支: %s \n代码提交时间: %s \n服务器环境: %s" % (git_ref, git_time, ("预发布环境" if is_pre_release() else "生产环境") if is_release() else "测试环境")
 
     binary = token_response.json()['cert']['binary']
     key = binary['key']
@@ -188,12 +193,14 @@ def ding_android(result):
 
 
 def build_ios():
+    os.chdir(git_dir)
+
     print('\n\n编译iOS项目\n\n')
 
     os.chdir('./ios')
 
     os.system('xcodebuild clean')
-    # os.system('pod update')
+    os.system('pod update')
     os.system('pod install')
 
     # 创建目录
@@ -291,7 +298,7 @@ def upload_ios():
     git_head = git.Repo(git_dir).head
     git_ref = git_head.ref
     git_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(git_head.commit.committed_date))
-    change_log = "代码分支: %s \n代码提交时间: %s \n服务器环境: %s" % (git_ref, git_time, "正式环境" if is_release() else "测试环境")
+    change_log = "代码分支: %s \n代码提交时间: %s \n服务器环境: %s" % (git_ref, git_time, ("预发布环境" if is_pre_release() else "生产环境") if is_release() else "测试环境")
 
     # 应用名称
     ipa_name = ''
@@ -350,19 +357,23 @@ def is_release():
             for line in fin.readlines():
                 result = re.match(r'.*release[^a-z]*=[^a-z]*([a-z]*).*', line, re.I)
 
-                if result and 'true' == result.group(1):
+                if result is not None and 'true' == result.group(1):
                     return True
-                if result and 'true' == result.group(1):
-                    return False
+    return False
 
 
-if __name__ == '__main__':
-    os.chdir(git_dir)
+def is_pre_release():
+    if os.path.exists(env_path):
+        with open(env_path) as fin:
+            for line in fin.readlines():
+                result = re.match(r'.*pre[^a-z]*=[^a-z]*([a-z]*).*', line, re.I)
 
-    # config_http_proxy()
+                if result is not None and 'true' == result.group(1):
+                    return True
+    return False
 
-    build_flutter()
 
+def publish_android():
     success = build_android()
     if not success:
         exit(-1, 'Android项目编译失败')
@@ -376,7 +387,10 @@ if __name__ == '__main__':
             time.sleep(1)
 
     ding_android(upload_result)
+    print('上传Android完成')
 
+
+def publish_ios():
     success = build_ios()
     if not success:
         exit(-1, 'iOS项目编译失败')
@@ -394,5 +408,15 @@ if __name__ == '__main__':
             os.chdir('../')
 
     ding_ios(upload_result)
+    print('上传iOS完成')
 
-    print('上传完成')
+
+if __name__ == '__main__':
+
+    # config_http_proxy()
+
+    build_flutter()
+
+    multiprocessing.Process(target=publish_android).start()
+
+    multiprocessing.Process(target=publish_ios).start()
