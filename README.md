@@ -1,8 +1,11 @@
 # better_flutter_build
 
 ### 功能: 
-- [x] 自动编译flutter
+- [x] 自动编译flutter项目
+- [x] 自动打包Android项目
+- [x] 自动打包iOS项目
 - [x] 自动上传到 fir.im
+- [x] 多进程并发
 
 ### 用法: 
  1. 创建 env.py, 填入必须的参数
