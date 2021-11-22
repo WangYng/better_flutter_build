@@ -142,10 +142,16 @@ def upload_android():
         version_code = apk_version_json['elements'][0]['versionCode']
 
     # change log
-    git_head = git.Repo(git_dir).head
+    repo = git.Repo(git_dir)
+    git_head = repo.head
     git_ref = git_head.ref
     git_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(git_head.commit.committed_date))
     change_log = "代码分支: %s \n代码提交时间: %s \n服务器环境: %s" % (git_ref, git_time, ("预发布环境" if is_pre_release() else "生产环境") if is_release() else "测试环境")
+    
+    commits = list(repo.iter_commits(git_ref, max_count=10))
+    commits_log = "\n\n代码提交记录: \n"
+    for commit in commits:
+        commits_log = commits_log + "%s %s\n" % (time.strftime("%Y-%m-%d %H:%M", time.localtime(commit.committed_date)), commit.message.strip().replace("\n", " "))
 
     binary = token_response.json()['cert']['binary']
     key = binary['key']
@@ -160,7 +166,7 @@ def upload_android():
             'x:name': name,
             'x:version': str(version_name),
             'x:build': str(version_code),
-            'x:changelog': str(change_log),
+            'x:changelog': str(change_log + commits_log),
             'file': (os.path.basename(android_apk_path), open(android_apk_path, 'rb'), 'multipart/form-data'),
         }
     )
@@ -295,10 +301,16 @@ def upload_ios():
     version_code = plist_info['ApplicationProperties']['CFBundleVersion']
 
     # change log
-    git_head = git.Repo(git_dir).head
+    repo = git.Repo(git_dir)
+    git_head = repo.head
     git_ref = git_head.ref
     git_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(git_head.commit.committed_date))
     change_log = "代码分支: %s \n代码提交时间: %s \n服务器环境: %s" % (git_ref, git_time, ("预发布环境" if is_pre_release() else "生产环境") if is_release() else "测试环境")
+
+    commits = list(repo.iter_commits(git_ref, max_count=10))
+    commits_log = "\n\n代码提交记录: \n"
+    for commit in commits:
+        commits_log = commits_log + "%s %s\n" % (time.strftime("%Y-%m-%d %H:%M", time.localtime(commit.committed_date)), commit.message.strip().replace("\n", " "))
 
     # 应用名称
     ipa_name = ''
@@ -320,7 +332,7 @@ def upload_ios():
             'x:version': str(version_name),
             'x:build': str(version_code),
             'x:release_type': 'AdHoc',
-            'x:changelog': str(change_log),
+            'x:changelog': str(change_log + commits_log),
             'file': (ipa_name, open(ipa_dir + '/' + ipa_name, 'rb'), 'multipart/form-data'),
         }
     )
