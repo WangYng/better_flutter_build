@@ -49,12 +49,13 @@ def config_http_proxy():
     os.system('export https_proxy=http://127.0.0.1:1087')
 
 
+def delete_http_proxy():
+    os.system('unset http_proxy')
+    os.system('unset https_proxy')
+
+
 def build_flutter():
     os.chdir(git_dir)
-
-    print('\n\n清空flutter项目\n\n')
-
-    os.system(flutter + ' clean')
 
     print('\n\n更新flutter项目依赖\n\n')
 
@@ -62,15 +63,19 @@ def build_flutter():
     os.system(flutter + ' pub get')
 
 
-def build_android():
+def clean_android():
     os.chdir(git_dir)
+    os.chdir('./android')
 
     print('\n\n清空Android项目\n\n')
 
-    os.chdir('./android')
-
     # 清空Android项目
     os.system('./gradlew clean')
+
+
+def build_android():
+    os.chdir(git_dir)
+    os.chdir('./android')
 
     print('\n\n编译Android项目\n\n')
 
@@ -198,15 +203,22 @@ def ding_android(result):
     result = requests.post(url=ding_web_hook, json=request_data, timeout=60)
 
 
-def build_ios():
+def clean_ios():
     os.chdir(git_dir)
-
-    print('\n\n编译iOS项目\n\n')
-
     os.chdir('./ios')
+
+    print('\n\n清空iOS项目\n\n')
 
     os.system('xcodebuild clean')
     os.system('pod update')
+
+
+def build_ios():
+    os.chdir(git_dir)
+    os.chdir('./ios')
+
+    print('\n\n编译iOS项目\n\n')
+
     os.system('pod install')
 
     # 创建目录
@@ -386,16 +398,20 @@ def is_pre_release():
 
 
 def publish_android():
+    # clean_android()
     success = build_android()
     if not success:
         exit(-1, 'Android项目编译失败')
+
+    # 上传文件不配置http代理
+    delete_http_proxy()
 
     while True:
         try:
             upload_result = upload_android()
             break
-        except:
-            print('上传出错')
+        except Exception as e:
+            print('上传出错', e)
             time.sleep(1)
 
     ding_android(upload_result)
@@ -403,9 +419,13 @@ def publish_android():
 
 
 def publish_ios():
+    # clean_ios()
     success = build_ios()
     if not success:
         exit(-1, 'iOS项目编译失败')
+
+    # 上传文件不配置http代理
+    delete_http_proxy()
 
     while True:
         os.chdir('./ios')
@@ -413,8 +433,8 @@ def publish_ios():
         try:
             upload_result = upload_ios()
             break
-        except:
-            print('上传出错')
+        except Exception as e:
+            print('上传出错 ', e)
             time.sleep(1)
         finally:
             os.chdir('../')
