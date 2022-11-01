@@ -49,7 +49,7 @@ def config_http_proxy():
     os.system('export https_proxy=http://127.0.0.1:1087')
 
 
-def delete_http_proxy():
+def undo_http_proxy():
     os.system('unset http_proxy')
     os.system('unset https_proxy')
 
@@ -404,7 +404,7 @@ def publish_android():
         exit(-1, 'Android项目编译失败')
 
     # 上传文件不配置http代理
-    delete_http_proxy()
+    undo_http_proxy()
 
     while True:
         try:
@@ -425,7 +425,7 @@ def publish_ios():
         exit(-1, 'iOS项目编译失败')
 
     # 上传文件不配置http代理
-    delete_http_proxy()
+    undo_http_proxy()
 
     while True:
         os.chdir('./ios')
