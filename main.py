@@ -1,17 +1,17 @@
 import json
 import multiprocessing
 import os
+import plistlib
 import re
-import time
 import shutil
+import time
 
 import git
 import requests
 from requests_toolbelt.multipart.encoder import MultipartEncoder, MultipartEncoderMonitor
-import plistlib
 
 # create env.py and add these variable
-from env import android_id, api_token, git_dir, ios_id, ding_web_hook, env_path, flutter
+from env import android_id, api_token, git_dir, ios_id, ding_web_hook, env_path, android_flutter, ios_flutter
 
 android_apk_path = './build/app/outputs/apk/release/app-release.apk'
 android_apk_info_path = './build/app/outputs/apk/release/output.json'
@@ -60,7 +60,25 @@ def build_flutter():
     print('\n\n更新flutter项目依赖\n\n')
 
     # 获取flutter项目依赖
-    os.system(flutter + ' pub get')
+    os.system(android_flutter + ' pub get -v')
+
+
+def build_android_flutter():
+    os.chdir(git_dir)
+
+    print('\n\n更新flutter项目依赖\n\n')
+
+    # 获取flutter项目依赖
+    os.system(android_flutter + ' pub get -v')
+
+
+def build_ios_flutter():
+    os.chdir(git_dir)
+
+    print('\n\n更新flutter项目依赖\n\n')
+
+    # 获取flutter项目依赖
+    os.system(ios_flutter + ' pub get -v')
 
 
 def clean_android():
@@ -70,7 +88,7 @@ def clean_android():
     print('\n\n清空Android项目\n\n')
 
     # 清空Android项目
-    os.system('./gradlew clean')
+    # os.system('./gradlew clean')
 
 
 def build_android():
@@ -151,12 +169,19 @@ def upload_android():
     git_head = repo.head
     git_ref = git_head.ref
     git_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(git_head.commit.committed_date))
-    change_log = "代码分支: %s \n代码提交时间: %s \n服务器环境: %s" % (git_ref, git_time, ("预发布环境" if is_pre_release() else "生产环境") if is_release() else "测试环境")
-    
+    run_env = "测试环境"
+    if is_pre_release():
+        run_env = "预发布环境"
+    elif is_release():
+        run_env = "生产环境"
+    change_log = "\n代码分支: %s \n代码提交时间: %s \n服务器环境: %s" % (git_ref, git_time, run_env)
+
     commits = list(repo.iter_commits(git_ref, max_count=10))
-    commits_log = "\n\n代码提交记录: \n"
+    commits_log = ""
     for commit in commits:
-        commits_log = commits_log + "%s %s\n" % (time.strftime("%Y-%m-%d %H:%M", time.localtime(commit.committed_date)), commit.message.strip().replace("\n", " "))
+        commit_time = time.strftime("%Y-%m-%d %H:%M", time.localtime(commit.committed_date))
+        commit_log = commit.message.strip().replace("\n", " ")
+        commits_log = commits_log + "%s %s\n" % (commit_time, commit_log)
 
     binary = token_response.json()['cert']['binary']
     key = binary['key']
@@ -171,7 +196,7 @@ def upload_android():
             'x:name': name,
             'x:version': str(version_name),
             'x:build': str(version_code),
-            'x:changelog': str(change_log + commits_log),
+            'x:changelog': str(commits_log + change_log),
             'file': (os.path.basename(android_apk_path), open(android_apk_path, 'rb'), 'multipart/form-data'),
         }
     )
@@ -195,9 +220,10 @@ def ding_android(result):
     short = base_info.json()['short']
     download_domain = base_info.json()['download_domain']
 
-    content = name + " 安卓 测试包更新了! \n" + result[
-        'change_log'] + "\n下载地址: " + 'http://' + download_domain + '/' + short + '?release_id=' + result[
-                  'release_id']
+    content = name + " 安卓 测试包更新了! \n" \
+              + result['change_log'] \
+              + "\n下载地址: " \
+              + 'http://' + download_domain + '/' + short + '?release_id=' + result['release_id']
 
     request_data = {'msgtype': 'text', 'text': {'content': content}}
     result = requests.post(url=ding_web_hook, json=request_data, timeout=60)
@@ -219,7 +245,23 @@ def build_ios():
 
     print('\n\n编译iOS项目\n\n')
 
+    # 修复pod在xcode 14.3中的错误
+    with open("Podfile", "r") as file:
+        pod_file_content = file.readlines()
+    if "IPHONEOS_DEPLOYMENT_TARGET" not in pod_file_content[82]:
+        with open("Podfile", "w") as file:
+            pod_file_content.insert(82, fixed_pod_content)
+            file.writelines(pod_file_content)
+
     os.system('pod install')
+
+    # 修复pod在xcode 14.3中的错误
+    with open("Pods/Target Support Files/Pods-Runner/Pods-Runner-frameworks.sh", "r") as file:
+        pod_file_content = file.read()
+    if fixed_pod_runner_content not in pod_file_content:
+        with open("Pods/Target Support Files/Pods-Runner/Pods-Runner-frameworks.sh", "w") as file:
+            pod_file_content = pod_file_content.replace(pod_runner_content, fixed_pod_runner_content)
+            file.write(pod_file_content)
 
     # 创建目录
     if not os.path.exists("./" + ios_output_dir):
@@ -265,6 +307,14 @@ def build_ios():
     if not os.path.exists(ipa_dir):
         os.chdir('../')
         return False
+
+    # 修复pod在xcode 14.3中的错误
+    with open("Podfile", "r") as file:
+        pod_file_content = file.readlines()
+    if "IPHONEOS_DEPLOYMENT_TARGET" in pod_file_content[82]:
+        with open("Podfile", "w") as file:
+            del pod_file_content[82]
+            file.writelines(pod_file_content)
 
     os.chdir('../')
     return True
@@ -317,12 +367,19 @@ def upload_ios():
     git_head = repo.head
     git_ref = git_head.ref
     git_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(git_head.commit.committed_date))
-    change_log = "代码分支: %s \n代码提交时间: %s \n服务器环境: %s" % (git_ref, git_time, ("预发布环境" if is_pre_release() else "生产环境") if is_release() else "测试环境")
+    run_env = "测试环境"
+    if is_pre_release():
+        run_env = "预发布环境"
+    elif is_release():
+        run_env = "生产环境"
+    change_log = "\n代码分支: %s \n代码提交时间: %s \n服务器环境: %s" % (git_ref, git_time, run_env)
 
     commits = list(repo.iter_commits(git_ref, max_count=10))
-    commits_log = "\n\n代码提交记录: \n"
+    commits_log = ""
     for commit in commits:
-        commits_log = commits_log + "%s %s\n" % (time.strftime("%Y-%m-%d %H:%M", time.localtime(commit.committed_date)), commit.message.strip().replace("\n", " "))
+        commit_time = time.strftime("%Y-%m-%d %H:%M", time.localtime(commit.committed_date))
+        commit_log = commit.message.strip().replace("\n", " ")
+        commits_log = commits_log + "%s %s\n" % (commit_time, commit_log)
 
     # 应用名称
     ipa_name = ''
@@ -344,7 +401,7 @@ def upload_ios():
             'x:version': str(version_name),
             'x:build': str(version_code),
             'x:release_type': 'AdHoc',
-            'x:changelog': str(change_log + commits_log),
+            'x:changelog': str(commits_log + change_log),
             'file': (ipa_name, open(ipa_dir + '/' + ipa_name, 'rb'), 'multipart/form-data'),
         }
     )
@@ -367,9 +424,10 @@ def ding_ios(result):
     short = base_info.json()['short']
     download_domain = base_info.json()['download_domain']
 
-    content = name + " iOS 测试包更新了! \n" + result[
-        'change_log'] + "\n下载地址: " + 'http://' + download_domain + '/' + short + '?release_id=' + result[
-                  'release_id']
+    content = name + " iOS 测试包更新了! \n" \
+              + result['change_log'] \
+              + "\n下载地址: " \
+              + 'http://' + download_domain + '/' + short + '?release_id=' + result['release_id']
 
     request_data = {'msgtype': 'text', 'text': {'content': content}}
     requests.post(url=ding_web_hook, json=request_data, timeout=60)
@@ -414,7 +472,7 @@ def publish_android():
             print('上传出错', e)
             time.sleep(1)
 
-    ding_android(upload_result)
+    # ding_android(upload_result)
     print('上传Android完成')
 
 
@@ -439,16 +497,28 @@ def publish_ios():
         finally:
             os.chdir('../')
 
-    ding_ios(upload_result)
+    # ding_ios(upload_result)
     print('上传iOS完成')
 
+
+fixed_pod_content = "      build_configuration.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '11.0'\n"
+
+pod_runner_content = "readlink \"${source}\""
+
+fixed_pod_runner_content = "readlink -f \"${source}\""
 
 if __name__ == '__main__':
 
     # config_http_proxy()
 
-    build_flutter()
+    if android_flutter == ios_flutter:
+        build_flutter()
 
-    multiprocessing.Process(target=publish_android).start()
+        multiprocessing.Process(target=publish_android).start()
+        multiprocessing.Process(target=publish_ios).start()
+    else:
+        build_ios_flutter()
+        publish_ios()
 
-    multiprocessing.Process(target=publish_ios).start()
+        build_android_flutter()
+        publish_android()

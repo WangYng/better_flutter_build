@@ -20,7 +20,8 @@ ios_id = ''
 git_dir = ''
 
 # 本地 flutter 命令地址
-flutter = ''
+android_flutter = ''
+ios_flutter = ''
 
 # 配置文件地址, 获取含有 release 字段的值, 并输出到日志中
 env_path = ''
