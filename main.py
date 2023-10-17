@@ -43,6 +43,9 @@ ios_export_options = '''<?xml version="1.0" encoding="UTF-8"?>
 </plist>
 '''
 
+change_log = ""
+commits_log = ""
+
 
 def config_http_proxy():
     os.system('export http_proxy=http://127.0.0.1:1087')
@@ -52,6 +55,29 @@ def config_http_proxy():
 def undo_http_proxy():
     os.system('unset http_proxy')
     os.system('unset https_proxy')
+
+
+def generate_log():
+    run_env = "测试环境"
+    if is_pre_release():
+        run_env = "预发布环境"
+    elif is_release():
+        run_env = "生产环境"
+
+    global change_log
+    repo = git.Repo(git_dir)
+    git_head = repo.head
+    git_ref = git_head.ref
+    git_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(git_head.commit.committed_date))
+    change_log = "\n代码分支: %s \n代码提交时间: %s \n服务器环境: %s" % (git_ref, git_time, run_env)
+
+    global commits_log
+    commits = list(repo.iter_commits(git_ref, max_count=10))
+    for commit in commits:
+        commit_time = time.strftime("%m-%d %H:%M", time.localtime(commit.committed_date))
+        commit_log = commit.message.strip().replace("\n", " ")[:30]
+        commit_author = commit.author.name
+        commits_log = commits_log + "%s %s（%s）\n" % (commit_time, commit_log, commit_author)
 
 
 def build_flutter():
@@ -163,25 +189,6 @@ def upload_android():
         apk_version_json = json.load(open(android_apk_mate_path, 'rb'))
         version_name = apk_version_json['elements'][0]['versionName']
         version_code = apk_version_json['elements'][0]['versionCode']
-
-    # change log
-    repo = git.Repo(git_dir)
-    git_head = repo.head
-    git_ref = git_head.ref
-    git_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(git_head.commit.committed_date))
-    run_env = "测试环境"
-    if is_pre_release():
-        run_env = "预发布环境"
-    elif is_release():
-        run_env = "生产环境"
-    change_log = "\n代码分支: %s \n代码提交时间: %s \n服务器环境: %s" % (git_ref, git_time, run_env)
-
-    commits = list(repo.iter_commits(git_ref, max_count=10))
-    commits_log = ""
-    for commit in commits:
-        commit_time = time.strftime("%Y-%m-%d %H:%M", time.localtime(commit.committed_date))
-        commit_log = commit.message.strip().replace("\n", " ")
-        commits_log = commits_log + "%s %s\n" % (commit_time, commit_log)
 
     binary = token_response.json()['cert']['binary']
     key = binary['key']
@@ -362,25 +369,6 @@ def upload_ios():
     version_name = plist_info['ApplicationProperties']['CFBundleShortVersionString']
     version_code = plist_info['ApplicationProperties']['CFBundleVersion']
 
-    # change log
-    repo = git.Repo(git_dir)
-    git_head = repo.head
-    git_ref = git_head.ref
-    git_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(git_head.commit.committed_date))
-    run_env = "测试环境"
-    if is_pre_release():
-        run_env = "预发布环境"
-    elif is_release():
-        run_env = "生产环境"
-    change_log = "\n代码分支: %s \n代码提交时间: %s \n服务器环境: %s" % (git_ref, git_time, run_env)
-
-    commits = list(repo.iter_commits(git_ref, max_count=10))
-    commits_log = ""
-    for commit in commits:
-        commit_time = time.strftime("%Y-%m-%d %H:%M", time.localtime(commit.committed_date))
-        commit_log = commit.message.strip().replace("\n", " ")
-        commits_log = commits_log + "%s %s\n" % (commit_time, commit_log)
-
     # 应用名称
     ipa_name = ''
     for i in os.listdir(ipa_dir):
@@ -510,6 +498,8 @@ fixed_pod_runner_content = "readlink -f \"${source}\""
 if __name__ == '__main__':
 
     # config_http_proxy()
+
+    generate_log()
 
     if android_flutter == ios_flutter:
         build_flutter()
