@@ -444,6 +444,8 @@ def is_pre_release():
 
 
 def publish_android():
+    generate_log()
+
     # clean_android()
     success = build_android()
     if not success:
@@ -465,6 +467,8 @@ def publish_android():
 
 
 def publish_ios():
+    generate_log()
+
     # clean_ios()
     success = build_ios()
     if not success:
@@ -498,8 +502,6 @@ fixed_pod_runner_content = "readlink -f \"${source}\""
 if __name__ == '__main__':
 
     # config_http_proxy()
-
-    generate_log()
 
     if android_flutter == ios_flutter:
         build_flutter()
