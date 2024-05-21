@@ -462,7 +462,7 @@ def publish_android():
             print('上传出错', e)
             time.sleep(1)
 
-    # ding_android(upload_result)
+    ding_android(upload_result)
     print('上传Android完成')
 
 
@@ -489,11 +489,11 @@ def publish_ios():
         finally:
             os.chdir('../')
 
-    # ding_ios(upload_result)
+    ding_ios(upload_result)
     print('上传iOS完成')
 
 
-fixed_pod_content = "      build_configuration.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '11.0'\n"
+fixed_pod_content = "      build_configuration.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'\n"
 
 pod_runner_content = "readlink \"${source}\""
 
