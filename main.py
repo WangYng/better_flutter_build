@@ -252,14 +252,6 @@ def build_ios():
 
     print('\n\n编译iOS项目\n\n')
 
-    # 修复pod在xcode 14.3中的错误
-    with open("Podfile", "r") as file:
-        pod_file_content = file.readlines()
-    if "IPHONEOS_DEPLOYMENT_TARGET" not in pod_file_content[82]:
-        with open("Podfile", "w") as file:
-            pod_file_content.insert(82, fixed_pod_content)
-            file.writelines(pod_file_content)
-
     os.system('pod install')
 
     # 修复pod在xcode 14.3中的错误
@@ -314,14 +306,6 @@ def build_ios():
     if not os.path.exists(ipa_dir):
         os.chdir('../')
         return False
-
-    # 修复pod在xcode 14.3中的错误
-    with open("Podfile", "r") as file:
-        pod_file_content = file.readlines()
-    if "IPHONEOS_DEPLOYMENT_TARGET" in pod_file_content[82]:
-        with open("Podfile", "w") as file:
-            del pod_file_content[82]
-            file.writelines(pod_file_content)
 
     os.chdir('../')
     return True
@@ -493,7 +477,7 @@ def publish_ios():
     print('上传iOS完成')
 
 
-fixed_pod_content = "      build_configuration.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'\n"
+# fixed_pod_content = "      build_configuration.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '12.0'\n"
 
 pod_runner_content = "readlink \"${source}\""
 
